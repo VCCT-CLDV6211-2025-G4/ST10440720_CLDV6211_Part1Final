@@ -1,0 +1,70 @@
+﻿@model IEnumerable<EventEase.Models.Booking>
+
+@{
+    ViewData["Title"] = "Bookings";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@ViewData["Title"]</h1>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> New Booking
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Event</th>
+                            <th>Venue</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Reference</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <img src="@item.Event.ImageUrl" class="rounded-circle me-2" width="40" height="40" alt="@item.Event.Name">
+                                        @item.Event.Name
+                                    </div>
+                                </td>
+                                <td>@item.Venue.Name</td>
+                                <td>@item.StartTime.ToString("MMM dd, yyyy")</td>
+                                <td>@item.StartTime.ToString("h:mm tt") - @item.EndTime.ToString("h:mm tt")</td>
+                                <td>@item.BookingReference</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Edit" asp-route-id="@item.BookingId" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a asp-action="Details" asp-route-id="@item.BookingId" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-info-circle"></i>
+                                        </a>
+                                        <a asp-action="Delete" asp-route-id="@item.BookingId" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                No bookings found. Would you like to <a asp-action="Create">create a new booking</a>?
+            </div>
+        }
+    </div>
+</div>

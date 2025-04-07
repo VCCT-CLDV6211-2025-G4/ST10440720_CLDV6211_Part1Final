@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Welcome to EventEase";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to EventEase 🎉</h1>
+    <p class="lead">Your smart solution for effortless event and venue booking.</p>
+
+    <hr />
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">View Events</h5>
+                    <p class="card-text">Explore all upcoming and ongoing events available for booking.</p>
+                    <a href="@Url.Action("Index", "Events")" class="btn btn-primary">Browse Events</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Make a Booking</h5>
+                    <p class="card-text">Choose your venue and time slot to book your desired event space.</p>
+                    <a href="@Url.Action("Create", "Bookings")" class="btn btn-success">Create Booking</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">View Bookings</h5>
+                    <p class="card-text">Check all your current bookings with event and venue details.</p>
+                    <a href="@Url.Action("Index", "Bookings")" class="btn btn-info">View Bookings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5">
+        <p>&copy; @DateTime.Now.Year - EventEase | Designed for seamless event management</p>
+    </footer>
+</div>
+

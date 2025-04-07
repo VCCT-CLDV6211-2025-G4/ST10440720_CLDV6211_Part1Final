@@ -1,0 +1,112 @@
+﻿@model EventEase.Controllers.HomeViewModel
+
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4">Welcome to EventEase</h1>
+        <p class="lead">Manage your venue bookings with ease</p>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fas fa-building fa-3x text-primary mb-3"></i>
+                <h3>@Model.VenueCount</h3>
+                <p class="card-text">Venues Available</p>
+                <a asp-controller="Venues" asp-action="Index" class="btn btn-primary">View Venues</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
+                <h3>@Model.EventCount</h3>
+                <p class="card-text">Events Scheduled</p>
+                <a asp-controller="Events" asp-action="Index" class="btn btn-primary">View Events</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fas fa-bookmark fa-3x text-primary mb-3"></i>
+                <h3>@Model.BookingCount</h3>
+                <p class="card-text">Active Bookings</p>
+                <a asp-controller="Bookings" asp-action="Index" class="btn btn-primary">View Bookings</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Recent Bookings</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.RecentBookings.Any())
+                {
+                    <div class="list-group">
+                        @foreach (var booking in Model.RecentBookings)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <h6>@booking.Event.Name</h6>
+                                    <small class="text-muted">@booking.StartTime.ToString("MMM dd")</small>
+                                </div>
+                                <p class="mb-1">@booking.Venue.Name</p>
+                                <small class="text-muted">Ref: @booking.BookingReference</small>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+                        No recent bookings found.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Upcoming Events</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.UpcomingEvents.Any())
+                {
+                    <div class="list-group">
+                        @foreach (var evt in Model.UpcomingEvents)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex">
+                                    <img src="@evt.ImageUrl" class="rounded me-3" width="60" height="60" alt="@evt.Name">
+                                    <div>
+                                        <h6 class="mb-1">@evt.Name</h6>
+                                        <p class="mb-1 small text-muted">@evt.Description</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+                        No upcoming events found.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

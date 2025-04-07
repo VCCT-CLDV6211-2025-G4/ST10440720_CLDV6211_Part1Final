@@ -1,0 +1,146 @@
+﻿@model EventEase.Models.Booking
+
+@{
+    ViewData["Title"] = "Edit Booking";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Edit">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="BookingId" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="VenueId" class="form-label">Venue</label>
+                                <select asp-for="VenueId" class="form-select" id="venueSelect" required>
+                                    @foreach (var venue in ViewBag.Venues)
+                                    {
+                                        <option value="@venue.VenueId" data-image="@venue.ImageUrl"
+                                                data-capacity="@venue.Capacity"
+                                                selected="@(venue.VenueId == Model.VenueId)">
+                                            @venue.Name - @venue.Location
+                                        </option>
+                                    }
+                                </select>
+                                <span asp-validation-for="VenueId" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="EventId" class="form-label">Event</label>
+                                <select asp-for="EventId" class="form-select" id="eventSelect" required>
+                                    @foreach (var evt in ViewBag.Events)
+                                    {
+                                        <option value="@evt.EventId" data-image="@evt.ImageUrl"
+                                                selected="@(evt.EventId == Model.EventId)">
+                                            @evt.Name
+                                        </option>
+                                    }
+                                </select>
+                                <span asp-validation-for="EventId" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6 text-center">
+                            <img id="venueImage" src="@ViewBag.SelectedVenue?.ImageUrl" class="img-thumbnail" style="max-height: 200px;">
+                            <div id="venueCapacity" class="mt-2 small text-muted">
+                                Capacity: @ViewBag.SelectedVenue?.Capacity
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <img id="eventImage" src="@Model.Event?.ImageUrl" class="img-thumbnail" style="max-height: 200px;">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="StartTime" class="form-label">Start Time</label>
+                                <input asp-for="StartTime" class="form-control" type="datetime-local" required />
+                                <span asp-validation-for="StartTime" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="EndTime" class="form-label">End Time</label>
+                                <input asp-for="EndTime" class="form-control" type="datetime-local" required />
+                                <span asp-validation-for="EndTime" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Booking Reference</label>
+                        <input class="form-control" value="@Model.BookingReference" readonly />
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Back to List
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-5">Current Venue:</dt>
+                    <dd class="col-sm-7">@Model.Venue?.Name</dd>
+
+                    <dt class="col-sm-5">Current Event:</dt>
+                    <dd class="col-sm-7">@Model.Event?.Name</dd>
+
+                    <dt class="col-sm-5">Original Date:</dt>
+                    <dd class="col-sm-7">@Model.StartTime.ToString("MMM dd, yyyy")</dd>
+
+                    <dt class="col-sm-5">Original Time:</dt>
+                    <dd class="col-sm-7">@Model.StartTime.ToString("h:mm tt") - @Model.EndTime.ToString("h:mm tt")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        // Update venue image when selection changes
+        document.getElementById('venueSelect').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const imageUrl = selectedOption.getAttribute('data-image') || '/images/venue-placeholder.jpg';
+            const capacity = selectedOption.getAttribute('data-capacity') || 'Unknown';
+
+            document.getElementById('venueImage').src = imageUrl;
+            document.getElementById('venueCapacity').textContent = `Capacity: ${capacity}`;
+        });
+
+        // Update event image when selection changes
+        document.getElementById('eventSelect').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const imageUrl = selectedOption.getAttribute('data-image') || '/images/event-placeholder.jpg';
+            document.getElementById('eventImage').src = imageUrl;
+        });
+    </script>
+}
+
