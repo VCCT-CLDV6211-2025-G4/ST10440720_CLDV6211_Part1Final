@@ -1,8 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using EventEase.Data;
 
 namespace EventEase.Models
 {
+    [NoDoubleBooking]
     public class Booking
     {
         [Key]
@@ -17,11 +22,11 @@ namespace EventEase.Models
         public DateTime EndTime { get; set; }
 
         [Required(ErrorMessage = "Venue is required")]
-        [ForeignKey("Venue")]
+        [ForeignKey(nameof(Venue))]
         public int VenueId { get; set; }
 
         [Required(ErrorMessage = "Event is required")]
-        [ForeignKey("Event")]
+        [ForeignKey(nameof(Event))]
         public int EventId { get; set; }
 
         [Display(Name = "Booking Reference")]
@@ -32,7 +37,36 @@ namespace EventEase.Models
         public DateTime BookingDate { get; set; } = DateTime.Now;
 
         // Navigation properties
-        public Venue? Venue { get; set; }
-        public Event? Event { get; set; }
+        public virtual Venue? Venue { get; set; }
+        public virtual Event? Event { get; set; }
+    }
+
+    // ------------------------------
+    // Custom validation attribute
+    // ------------------------------
+    public class NoDoubleBookingAttribute : ValidationAttribute
+    {
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+        {
+            var booking = (Booking)validationContext.ObjectInstance;
+
+            var dbContext = (ApplicationDbContext?)validationContext.GetService(typeof(ApplicationDbContext));
+
+            if (dbContext == null)
+                return new ValidationResult("Database context not available for validation.");
+
+            // Look for overlapping bookings at the same venue (excluding self for edits)
+            var overlapping = dbContext.Bookings
+                .Where(b => b.VenueId == booking.VenueId && b.BookingId != booking.BookingId)
+                .Where(b => (booking.StartTime < b.EndTime) && (booking.EndTime > b.StartTime))
+                .FirstOrDefault();
+
+            if (overlapping != null)
+            {
+                return new ValidationResult("This venue is already booked during the selected time slot.");
+            }
+
+            return ValidationResult.Success;
+        }
     }
 }

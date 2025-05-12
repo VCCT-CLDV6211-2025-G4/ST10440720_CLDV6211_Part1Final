@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.Http;
 
 namespace EventEase.Models
 {
@@ -20,7 +21,6 @@ namespace EventEase.Models
         [DataType(DataType.Date)]
         public DateTime Date { get; set; }
 
-        // Set VenueId as required if every event must have a venue
         [Required(ErrorMessage = "Venue selection is required")]
         [Display(Name = "Venue")]
         public int VenueId { get; set; }
@@ -33,6 +33,11 @@ namespace EventEase.Models
 
         [Display(Name = "Image URL")]
         public string ImageUrl { get; set; } = "/images/event-placeholder.jpg";
+
+        // Not mapped: This is used to capture the uploaded file during form submission
+        [NotMapped]
+        [Display(Name = "Upload Image")]
+        public IFormFile? ImageFile { get; set; }
 
         public ICollection<Booking>? Bookings { get; set; }
     }

@@ -28,18 +28,15 @@ namespace EventEase.Controllers
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var booking = await _context.Bookings
                 .Include(b => b.Venue)
                 .Include(b => b.Event)
                 .FirstOrDefaultAsync(m => m.BookingId == id);
+
             if (booking == null)
-            {
                 return NotFound();
-            }
 
             return View(booking);
         }
@@ -59,24 +56,22 @@ namespace EventEase.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check for booking conflicts
+                // Prevent double-booking
                 bool isConflict = await _context.Bookings
                     .AnyAsync(b => b.VenueId == booking.VenueId &&
-                                 ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
-                                  (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
-                                  (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
+                                   ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
+                                    (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
+                                    (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
 
                 if (isConflict)
                 {
-                    ModelState.AddModelError(string.Empty, "The selected time slot conflicts with an existing booking for this venue.");
+                    ModelState.AddModelError("", "A booking already exists for this venue at the selected time.");
                     ViewBag.Venues = await _context.Venues.ToListAsync();
                     ViewBag.Events = await _context.Events.ToListAsync();
                     return View(booking);
                 }
 
-                // Generate booking reference
                 booking.BookingReference = Guid.NewGuid().ToString();
-
                 _context.Add(booking);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -91,15 +86,11 @@ namespace EventEase.Controllers
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var booking = await _context.Bookings.FindAsync(id);
             if (booking == null)
-            {
                 return NotFound();
-            }
 
             ViewBag.Venues = await _context.Venues.ToListAsync();
             ViewBag.Events = await _context.Events.ToListAsync();
@@ -112,43 +103,37 @@ namespace EventEase.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("BookingId,StartTime,EndTime,VenueId,EventId,BookingReference")] Booking booking)
         {
             if (id != booking.BookingId)
-            {
                 return NotFound();
-            }
 
             if (ModelState.IsValid)
             {
+                // Check for double booking (excluding current)
+                bool isConflict = await _context.Bookings
+                    .AnyAsync(b => b.BookingId != booking.BookingId &&
+                                   b.VenueId == booking.VenueId &&
+                                   ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
+                                    (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
+                                    (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
+
+                if (isConflict)
+                {
+                    ModelState.AddModelError("", "Another booking exists for this venue at the selected time.");
+                    ViewBag.Venues = await _context.Venues.ToListAsync();
+                    ViewBag.Events = await _context.Events.ToListAsync();
+                    return View(booking);
+                }
+
                 try
                 {
-                    // Check for booking conflicts (excluding current booking)
-                    bool isConflict = await _context.Bookings
-                        .AnyAsync(b => b.BookingId != booking.BookingId &&
-                                     b.VenueId == booking.VenueId &&
-                                     ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
-                                      (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
-                                      (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
-
-                    if (isConflict)
-                    {
-                        ModelState.AddModelError(string.Empty, "The selected time slot conflicts with an existing booking for this venue.");
-                        ViewBag.Venues = await _context.Venues.ToListAsync();
-                        ViewBag.Events = await _context.Events.ToListAsync();
-                        return View(booking);
-                    }
-
                     _context.Update(booking);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!BookingExists(booking.BookingId))
-                    {
                         return NotFound();
-                    }
                     else
-                    {
                         throw;
-                    }
                 }
                 return RedirectToAction(nameof(Index));
             }
@@ -162,18 +147,15 @@ namespace EventEase.Controllers
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var booking = await _context.Bookings
                 .Include(b => b.Venue)
                 .Include(b => b.Event)
                 .FirstOrDefaultAsync(m => m.BookingId == id);
+
             if (booking == null)
-            {
                 return NotFound();
-            }
 
             return View(booking);
         }
@@ -186,6 +168,19 @@ namespace EventEase.Controllers
             var booking = await _context.Bookings.FindAsync(id);
             if (booking != null)
             {
+                // Protect deletion if related entities exist
+                var eventHasBookings = await _context.Events
+                    .AnyAsync(e => e.EventId == booking.EventId && e.Bookings!.Any());
+
+                var venueHasBookings = await _context.Venues
+                    .AnyAsync(v => v.VenueId == booking.VenueId && v.Bookings!.Any());
+
+                if (eventHasBookings || venueHasBookings)
+                {
+                    TempData["ErrorMessage"] = "Cannot delete this booking. It is linked to an event or venue that still has bookings.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 _context.Bookings.Remove(booking);
                 await _context.SaveChangesAsync();
             }
