@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 
 namespace EventEase.Models
 {
@@ -22,7 +21,6 @@ namespace EventEase.Models
         public int Capacity { get; set; }
 
         [Display(Name = "Image URL")]
-        // Replace static path with a field that can be updated with Azure Blob URL
         public string ImageUrl { get; set; } = string.Empty;
 
         [Display(Name = "Description")]
@@ -31,11 +29,6 @@ namespace EventEase.Models
 
         public ICollection<Booking>? Bookings { get; set; }
 
-        /// <summary>
-        /// Checks if the venue is available on a specific date.
-        /// </summary>
-        /// <param name="date">The date to check availability for.</param>
-        /// <returns>True if available, false if already booked.</returns>
         public bool IsAvailable(DateTime date)
         {
             return Bookings == null || !Bookings.Any(b => b.BookingDate.Date == date.Date);

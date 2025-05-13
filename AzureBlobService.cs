@@ -7,7 +7,7 @@ public class AzureBlobService
 
     public AzureBlobService(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("AzureBlobStorage");
+        _connectionString = configuration.GetConnectionString("DefaultEndpointsProtocol=https;AccountName=storagest10440720;AccountKey=SWZY/tu608dQ9C3tdfruKO9JFWEMWzNeXqvHDgbHbCo36+R4t9wcJWDi+QTPqP/eRffD+3jZfkIW+AStGf8rrw==;EndpointSuffix=core.windows.net");
     }
 
     public async Task<string> UploadFileAsync(IFormFile file, string containerName)

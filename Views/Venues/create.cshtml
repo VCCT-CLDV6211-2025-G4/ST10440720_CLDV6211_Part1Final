@@ -10,31 +10,31 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-body">
-                <form asp-action="Create">
+                <form asp-action="Create" method="post" enctype="multipart/form-data">
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label"></label>
-                        <input asp-for="Name" class="form-control" />
+                        <input asp-for="Name" class="form-control" id="Name" />
                         <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Location" class="form-label"></label>
-                        <input asp-for="Location" class="form-control" />
+                        <input asp-for="Location" class="form-control" id="Location" />
                         <span asp-validation-for="Location" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Capacity" class="form-label"></label>
-                        <input asp-for="Capacity" class="form-control" />
+                        <input asp-for="Capacity" class="form-control" id="Capacity" />
                         <span asp-validation-for="Capacity" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="ImageUrl" class="form-label"></label>
-                        <input asp-for="ImageUrl" class="form-control" />
-                        <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                        <label class="form-label">Upload Image</label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                        <span class="text-danger">@Html.ValidationMessage("imageFile")</span>
                     </div>
 
                     <div class="mb-3">
@@ -62,7 +62,7 @@
                 <h5 class="mb-0">Venue Preview</h5>
             </div>
             <div class="card-body text-center">
-                <img id="venuePreview" src="/images/venue-placeholder.jpg" class="img-thumbnail mb-3" style="max-height: 200px;">
+                <img id="venuePreview" src="/images/venue-placeholder.jpg" class="img-thumbnail mb-3" style="max-height: 200px;" />
                 <h5 id="venueNamePreview">New Venue</h5>
                 <p id="venueLocationPreview" class="text-muted">Location</p>
                 <span id="venueCapacityPreview" class="badge bg-primary">Capacity: 0</span>
@@ -75,22 +75,48 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
     <script>
-        // Live preview of venue details
-        document.getElementById('Name').addEventListener('input', function() {
+        // Live preview for venue name
+        document.getElementById('Name').addEventListener('input', function () {
             document.getElementById('venueNamePreview').textContent = this.value || 'New Venue';
         });
 
-        document.getElementById('Location').addEventListener('input', function() {
+        // Live preview for location
+        document.getElementById('Location').addEventListener('input', function () {
             document.getElementById('venueLocationPreview').textContent = this.value || 'Location';
         });
 
-        document.getElementById('Capacity').addEventListener('input', function() {
+        // Live preview for capacity
+        document.getElementById('Capacity').addEventListener('input', function () {
             document.getElementById('venueCapacityPreview').textContent = 'Capacity: ' + (this.value || '0');
         });
 
-        document.getElementById('ImageUrl').addEventListener('input', function() {
-            document.getElementById('venuePreview').src = this.value || '/images/venue-placeholder.jpg';
+        // Live preview for image
+        document.querySelector('input[type="file"]').addEventListener('change', function () {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('venuePreview').src = e.target.result;
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        // File validation (image type and max 5MB)
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    e.preventDefault();
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    e.preventDefault();
+                }
+            }
         });
     </script>
 }

@@ -3,26 +3,31 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EventEase.Models;
 using EventEase.Data;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
+using System;
+using Azure.Storage.Blobs.Models;
 
 namespace EventEase.Controllers
 {
     public class EventsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
+        private readonly long _maxFileSize = 5 * 1024 * 1024; // 5MB
 
-        public EventsController(ApplicationDbContext context)
+        public EventsController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
-        // GET: Events
         public async Task<IActionResult> Index()
         {
             var events = await _context.Events.Include(e => e.Venue).ToListAsync();
             return View(events);
         }
 
-        // GET: Events/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -38,30 +43,41 @@ namespace EventEase.Controllers
             return View(@event);
         }
 
-        // GET: Events/Create
         public IActionResult Create()
         {
             PopulateVenuesDropDown();
             return View();
         }
 
-        // POST: Events/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EventId,Name,Title,Date,VenueId,Description,ImageUrl")] Event @event)
+        public async Task<IActionResult> Create([Bind("EventId,Name,Title,Date,VenueId,Description")] Event @event, IFormFile imageFile)
         {
+            ValidateImageFile(imageFile);
+
             if (ModelState.IsValid)
             {
-                _context.Add(@event);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                try
+                {
+                    if (imageFile != null && imageFile.Length > 0)
+                    {
+                        @event.ImageUrl = await UploadImageToBlobAsync(imageFile);
+                    }
+
+                    _context.Add(@event);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"An error occurred: {ex.Message}");
+                }
             }
 
             PopulateVenuesDropDown(@event.VenueId);
             return View(@event);
         }
 
-        // GET: Events/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -75,36 +91,44 @@ namespace EventEase.Controllers
             return View(@event);
         }
 
-        // POST: Events/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("EventId,Name,Title,Date,VenueId,Description,ImageUrl")] Event @event)
+        public async Task<IActionResult> Edit(int id, [Bind("EventId,Name,Title,Date,VenueId,Description,ImageUrl")] Event @event, IFormFile? imageFile)
         {
             if (id != @event.EventId)
                 return NotFound();
+
+            ValidateImageFile(imageFile, false);
 
             if (ModelState.IsValid)
             {
                 try
                 {
+                    if (imageFile != null && imageFile.Length > 0)
+                    {
+                        @event.ImageUrl = await UploadImageToBlobAsync(imageFile);
+                    }
+
                     _context.Update(@event);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!EventExists(@event.EventId))
                         return NotFound();
-                    else
-                        throw;
+                    throw;
                 }
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"An error occurred: {ex.Message}");
+                }
             }
 
             PopulateVenuesDropDown(@event.VenueId);
             return View(@event);
         }
 
-        // GET: Events/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -118,16 +142,12 @@ namespace EventEase.Controllers
             if (@event == null)
                 return NotFound();
 
-            if (@event.Bookings != null && @event.Bookings.Any())
-            {
-                ViewBag.ErrorMessage = "Cannot delete this event as it has associated bookings.";
-                return View("DeleteError");
-            }
+            ViewBag.HasBookings = @event.Bookings?.Any() ?? false;
+            ViewBag.BookingCount = @event.Bookings?.Count ?? 0;
 
             return View(@event);
         }
 
-        // POST: Events/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -139,15 +159,28 @@ namespace EventEase.Controllers
             if (@event == null)
                 return NotFound();
 
-            if (@event.Bookings != null && @event.Bookings.Any())
+            try
             {
-                ViewBag.ErrorMessage = "Cannot delete this event as it has associated bookings.";
-                return View("DeleteError");
-            }
+                // Delete associated bookings first if they exist
+                if (@event.Bookings?.Any() == true)
+                {
+                    _context.Bookings.RemoveRange(@event.Bookings);
+                }
 
-            _context.Events.Remove(@event);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+                _context.Events.Remove(@event);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"An error occurred: {ex.Message}");
+
+                // Re-populate view data if deletion fails
+                ViewBag.HasBookings = @event.Bookings?.Any() ?? false;
+                ViewBag.BookingCount = @event.Bookings?.Count ?? 0;
+
+                return View("Delete", @event);
+            }
         }
 
         private bool EventExists(int id)
@@ -155,13 +188,68 @@ namespace EventEase.Controllers
             return _context.Events.Any(e => e.EventId == id);
         }
 
-        /// <summary>
-        /// Populates ViewBag.VenueId with a SelectList for venue dropdowns.
-        /// </summary>
         private void PopulateVenuesDropDown(object? selectedVenueId = null)
         {
             ViewBag.VenueId = new SelectList(_context.Venues.OrderBy(v => v.Name), "VenueId", "Name", selectedVenueId);
-            //all viewbags generated with copilot
+        }
+
+        private void ValidateImageFile(IFormFile file, bool isRequired = false)
+        {
+            if (file == null || file.Length == 0)
+            {
+                if (isRequired)
+                {
+                    ModelState.AddModelError("imageFile", "Please upload an image file.");
+                }
+                return;
+            }
+
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                ModelState.AddModelError("imageFile", "Only image files are allowed.");
+            }
+
+            if (file.Length > _maxFileSize)
+            {
+                ModelState.AddModelError("imageFile", $"File size must be less than {_maxFileSize / (1024 * 1024)}MB.");
+            }
+        }
+
+        private async Task<string> UploadImageToBlobAsync(IFormFile file)
+        {
+            try
+            {
+                var connectionString = _configuration["AzureBlobStorage:ConnectionString"];
+                var containerName = _configuration["AzureBlobStorage:ContainerName"];
+
+                if (string.IsNullOrEmpty(connectionString))
+                    throw new ApplicationException("Azure Storage connection is not configured");
+
+                if (string.IsNullOrEmpty(containerName))
+                    throw new ApplicationException("Azure Storage container name is not configured");
+
+                var blobServiceClient = new BlobServiceClient(connectionString);
+                var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
+                await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                var blobClient = containerClient.GetBlobClient(fileName);
+
+                using (var stream = file.OpenReadStream())
+                {
+                    await blobClient.UploadAsync(stream, new BlobHttpHeaders
+                    {
+                        ContentType = file.ContentType
+                    }, conditions: null);
+                }
+
+                return blobClient.Uri.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("Failed to upload image. Please try again with a different file.", ex);
+            }
         }
     }
 }

@@ -10,20 +10,30 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-body">
-                @if (TempData["SuccessMessage"] != null)
+
+                @* ✅ Fixed success message display to avoid NullReferenceException *@
+                @if (TempData["SuccessMessage"] is string message && !string.IsNullOrEmpty(message))
                 {
                     <div class="alert alert-success">
-                        @TempData["SuccessMessage"]
+                        @message
                     </div>
                 }
 
-                <form asp-action="Create">
-                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="All" class="text-danger"></div>
 
-                    <!-- Hidden BookingDate field to avoid NULL insert error -->
-                    <div class="form-group d-none">
-                        <label asp-for="BookingDate" class="control-label"></label>
-                        <input asp-for="BookingDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                    <!-- Customer Name -->
+                    <div class="mb-3">
+                        <label asp-for="CustomerName" class="form-label"></label>
+                        <input asp-for="CustomerName" class="form-control" required />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+
+                    <!-- Hidden BookingDate field -->
+                    <div class="mb-3">
+                        <label asp-for="BookingDate" class="form-label"></label>
+                        <input asp-for="BookingDate" class="form-control" type="datetime-local"
+                               value="@Model?.BookingDate.ToString("yyyy-MM-ddTHH:mm")" />
                         <span asp-validation-for="BookingDate" class="text-danger"></span>
                     </div>
 
@@ -35,8 +45,9 @@
                                     <option value="">Select a venue</option>
                                     @foreach (var venue in ViewBag.Venues)
                                     {
-                                        <option value="@venue.VenueId" data-image="@venue.ImageUrl"
-                                                data-capacity="@venue.Capacity">@venue.Name - @venue.Location</option>
+                                        <option value="@venue.VenueId" data-image="@venue.ImageUrl" data-capacity="@venue.Capacity">
+                                            @venue.Name - @venue.Location
+                                        </option>
                                     }
                                 </select>
                                 <span asp-validation-for="VenueId" class="text-danger"></span>
@@ -59,11 +70,11 @@
 
                     <div class="row mb-4">
                         <div class="col-md-6 text-center">
-                            <img id="venueImage" src="/images/venue-placeholder.jpg" class="img-thumbnail" style="max-height: 200px;">
+                            <img id="venueImage" src="/images/venue-placeholder.jpg" class="img-thumbnail" style="max-height: 200px;" />
                             <div id="venueCapacity" class="mt-2 small text-muted"></div>
                         </div>
                         <div class="col-md-6 text-center">
-                            <img id="eventImage" src="/images/event-placeholder.jpg" class="img-thumbnail" style="max-height: 200px;">
+                            <img id="eventImage" src="/images/event-placeholder.jpg" class="img-thumbnail" style="max-height: 200px;" />
                         </div>
                     </div>
 
@@ -71,14 +82,14 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="StartTime" class="form-label">Start Time</label>
-                                <input asp-for="StartTime" class="form-control" type="datetime-local" required />
+                                <input asp-for="StartTime" class="form-control" type="datetime-local" id="StartTime" required />
                                 <span asp-validation-for="StartTime" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="EndTime" class="form-label">End Time</label>
-                                <input asp-for="EndTime" class="form-control" type="datetime-local" required />
+                                <input asp-for="EndTime" class="form-control" type="datetime-local" id="EndTime" required />
                                 <span asp-validation-for="EndTime" class="text-danger"></span>
                             </div>
                         </div>
@@ -126,8 +137,8 @@
     </div>
 </div>
 
+@section Scripts {
     <script>
-        // Update venue image when selection changes
         document.getElementById('venueSelect').addEventListener('change', function () {
             const selectedOption = this.options[this.selectedIndex];
             const imageUrl = selectedOption.getAttribute('data-image') || '/images/venue-placeholder.jpg';
@@ -137,16 +148,14 @@
             document.getElementById('venueCapacity').textContent = `Capacity: ${capacity}`;
         });
 
-        // Update event image when selection changes
         document.getElementById('eventSelect').addEventListener('change', function () {
             const selectedOption = this.options[this.selectedIndex];
             const imageUrl = selectedOption.getAttribute('data-image') || '/images/event-placeholder.jpg';
             document.getElementById('eventImage').src = imageUrl;
         });
 
-        // Set minimum datetime to today
-        const today = new Date().toISOString().slice(0, 16);
-        document.getElementById('StartTime').min = today;
-        document.getElementById('EndTime').min = today;
+        const now = new Date().toISOString().slice(0, 16);
+        document.getElementById('StartTime').min = now;
+        document.getElementById('EndTime').min = now;
     </script>
 }

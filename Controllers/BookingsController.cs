@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using EventEase.Models;
 using EventEase.Data;
+using EventEase.Models;
 
-namespace EventEase.Controllers
+namespace EventBookingSystem.Controllers
 {
     public class BookingsController : Controller
     {
@@ -15,24 +16,32 @@ namespace EventEase.Controllers
         }
 
         // GET: Bookings
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var bookings = await _context.Bookings
-                .Include(b => b.Venue)
-                .Include(b => b.Event)
-                .ToListAsync();
-            return View(bookings);
+            var bookings = from b in _context.Bookings
+                               .Include(b => b.Event)
+                               .Include(b => b.Venue)
+                           select b;
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                bookings = bookings.Where(b =>
+                    b.CustomerName.Contains(searchString) ||
+                    b.Venue.Name.Contains(searchString));
+            }
+
+            return View(await bookings.ToListAsync());
         }
 
-        // GET: Bookings/Details/5
+        // GET: Bookings/Details
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
                 return NotFound();
 
             var booking = await _context.Bookings
-                .Include(b => b.Venue)
                 .Include(b => b.Event)
+                .Include(b => b.Venue)
                 .FirstOrDefaultAsync(m => m.BookingId == id);
 
             if (booking == null)
@@ -41,48 +50,34 @@ namespace EventEase.Controllers
             return View(booking);
         }
 
-        // GET: Bookings/Create
-        public async Task<IActionResult> Create()
+        // ✅ FIXED: GET: Bookings/Create
+        public IActionResult Create()
         {
-            ViewBag.Venues = await _context.Venues.ToListAsync();
-            ViewBag.Events = await _context.Events.ToListAsync();
+            ViewBag.Venues = _context.Venues.ToList();
+            ViewBag.Events = _context.Events.ToList();
             return View();
         }
 
-        // POST: Bookings/Create
+        // ✅ FIXED: POST: Bookings/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("BookingId,StartTime,EndTime,VenueId,EventId")] Booking booking)
+        public async Task<IActionResult> Create([Bind("BookingId,CustomerName,EventId,VenueId,BookingDate,StartTime,EndTime")] Booking booking)
         {
             if (ModelState.IsValid)
             {
-                // Prevent double-booking
-                bool isConflict = await _context.Bookings
-                    .AnyAsync(b => b.VenueId == booking.VenueId &&
-                                   ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
-                                    (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
-                                    (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
-
-                if (isConflict)
-                {
-                    ModelState.AddModelError("", "A booking already exists for this venue at the selected time.");
-                    ViewBag.Venues = await _context.Venues.ToListAsync();
-                    ViewBag.Events = await _context.Events.ToListAsync();
-                    return View(booking);
-                }
-
-                booking.BookingReference = Guid.NewGuid().ToString();
                 _context.Add(booking);
                 await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Booking successfully created.";
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Venues = await _context.Venues.ToListAsync();
-            ViewBag.Events = await _context.Events.ToListAsync();
+            // Re-populate ViewBag in case of validation failure
+            ViewBag.Venues = _context.Venues.ToList();
+            ViewBag.Events = _context.Events.ToList();
             return View(booking);
         }
 
-        // GET: Bookings/Edit/5
+        // GET: Bookings/Edit
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -92,37 +87,21 @@ namespace EventEase.Controllers
             if (booking == null)
                 return NotFound();
 
-            ViewBag.Venues = await _context.Venues.ToListAsync();
-            ViewBag.Events = await _context.Events.ToListAsync();
+            ViewData["EventId"] = new SelectList(_context.Events, "EventId", "Name", booking.EventId);
+            ViewData["VenueId"] = new SelectList(_context.Venues, "VenueId", "Name", booking.VenueId);
             return View(booking);
         }
 
-        // POST: Bookings/Edit/5
+        // POST: Bookings/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("BookingId,StartTime,EndTime,VenueId,EventId,BookingReference")] Booking booking)
+        public async Task<IActionResult> Edit(int id, [Bind("BookingId,CustomerName,EventId,VenueId,BookingDate,StartTime,EndTime")] Booking booking)
         {
             if (id != booking.BookingId)
                 return NotFound();
 
             if (ModelState.IsValid)
             {
-                // Check for double booking (excluding current)
-                bool isConflict = await _context.Bookings
-                    .AnyAsync(b => b.BookingId != booking.BookingId &&
-                                   b.VenueId == booking.VenueId &&
-                                   ((booking.StartTime >= b.StartTime && booking.StartTime < b.EndTime) ||
-                                    (booking.EndTime > b.StartTime && booking.EndTime <= b.EndTime) ||
-                                    (booking.StartTime <= b.StartTime && booking.EndTime >= b.EndTime)));
-
-                if (isConflict)
-                {
-                    ModelState.AddModelError("", "Another booking exists for this venue at the selected time.");
-                    ViewBag.Venues = await _context.Venues.ToListAsync();
-                    ViewBag.Events = await _context.Events.ToListAsync();
-                    return View(booking);
-                }
-
                 try
                 {
                     _context.Update(booking);
@@ -138,20 +117,20 @@ namespace EventEase.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Venues = await _context.Venues.ToListAsync();
-            ViewBag.Events = await _context.Events.ToListAsync();
+            ViewData["EventId"] = new SelectList(_context.Events, "EventId", "Name", booking.EventId);
+            ViewData["VenueId"] = new SelectList(_context.Venues, "VenueId", "Name", booking.VenueId);
             return View(booking);
         }
 
-        // GET: Bookings/Delete/5
+        // GET: Bookings/Delete
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
                 return NotFound();
 
             var booking = await _context.Bookings
-                .Include(b => b.Venue)
                 .Include(b => b.Event)
+                .Include(b => b.Venue)
                 .FirstOrDefaultAsync(m => m.BookingId == id);
 
             if (booking == null)
@@ -160,30 +139,19 @@ namespace EventEase.Controllers
             return View(booking);
         }
 
-        // POST: Bookings/Delete/5
+        // POST: Bookings/Delete
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var booking = await _context.Bookings.FindAsync(id);
+
             if (booking != null)
             {
-                // Protect deletion if related entities exist
-                var eventHasBookings = await _context.Events
-                    .AnyAsync(e => e.EventId == booking.EventId && e.Bookings!.Any());
-
-                var venueHasBookings = await _context.Venues
-                    .AnyAsync(v => v.VenueId == booking.VenueId && v.Bookings!.Any());
-
-                if (eventHasBookings || venueHasBookings)
-                {
-                    TempData["ErrorMessage"] = "Cannot delete this booking. It is linked to an event or venue that still has bookings.";
-                    return RedirectToAction(nameof(Index));
-                }
-
                 _context.Bookings.Remove(booking);
                 await _context.SaveChangesAsync();
             }
+
             return RedirectToAction(nameof(Index));
         }
 

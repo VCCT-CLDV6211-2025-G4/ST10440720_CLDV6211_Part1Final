@@ -13,6 +13,10 @@ namespace EventEase.Models
         [Key]
         public int BookingId { get; set; }
 
+        [Required(ErrorMessage = "Customer name is required")]
+        [Display(Name = "Customer Name")]
+        public string CustomerName { get; set; }
+
         [Required(ErrorMessage = "Start time is required")]
         [Display(Name = "Start Time")]
         public DateTime StartTime { get; set; }
