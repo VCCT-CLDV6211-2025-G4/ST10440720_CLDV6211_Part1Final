@@ -50,6 +50,14 @@
                         <span asp-validation-for="VenueId" class="text-danger"></span>
                     </div>
 
+                    <div class="mb-3">
+                        <label asp-for="EventTypesId" class="form-label">Event Type</label>
+                        <select asp-for="EventTypesId" class="form-select" asp-items="ViewBag.EventTypesId">
+                            <option value="">-- Select Event Type --</option>
+                        </select>
+                        <span asp-validation-for="EventTypesId" class="text-danger"></span>
+                    </div>
+
                     <div class="d-flex justify-content-between mt-4">
                         <a asp-action="Index" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i> Back to List

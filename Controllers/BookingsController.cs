@@ -15,20 +15,46 @@ namespace EventBookingSystem.Controllers
             _context = context;
         }
 
-        // GET: Bookings
-        public async Task<IActionResult> Index(string searchString)
+        // Bookings (with Advanced Filtering)
+        public async Task<IActionResult> Index(string searchString, int? eventTypesId, DateTime? startDate, DateTime? endDate, bool? availableOnly = false)
         {
-            var bookings = from b in _context.Bookings
-                               .Include(b => b.Event)
-                               .Include(b => b.Venue)
-                           select b;
+            var bookings = _context.Bookings
+                .Include(b => b.Event)
+                    .ThenInclude(e => e.EventTypes)
+                .Include(b => b.Venue)
+                .AsQueryable();
 
+            // Filter by search string (CustomerName or Venue Name)
             if (!string.IsNullOrEmpty(searchString))
             {
                 bookings = bookings.Where(b =>
                     b.CustomerName.Contains(searchString) ||
                     b.Venue.Name.Contains(searchString));
             }
+
+            // Filter by EventTypesId
+            if (eventTypesId.HasValue)
+            {
+                bookings = bookings.Where(b => b.Event.EventTypesId == eventTypesId);
+            }
+
+            // Filter by Date Range
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                bookings = bookings.Where(b => b.BookingDate >= startDate && b.BookingDate <= endDate);
+            }
+
+            // Filter by Venue Availability (using IsAvailable field)
+            if (availableOnly == true)
+            {
+                bookings = bookings.Where(b => b.Venue.IsAvailable);
+            }
+
+            // Provide data to View for filters dropdown
+            ViewBag.EventTypes = new SelectList(await _context.EventTypes.ToListAsync(), "EventTypesId", "Name", eventTypesId);
+            ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+            ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
+            ViewBag.AvailableOnly = availableOnly;
 
             return View(await bookings.ToListAsync());
         }
@@ -50,15 +76,15 @@ namespace EventBookingSystem.Controllers
             return View(booking);
         }
 
-        // ✅ FIXED: GET: Bookings/Create
+        // GET: Bookings/Create
         public IActionResult Create()
         {
             ViewBag.Venues = _context.Venues.ToList();
-            ViewBag.Events = _context.Events.ToList();
+            ViewBag.Events = _context.Events.Include(e => e.EventTypes).ToList();
             return View();
         }
 
-        // ✅ FIXED: POST: Bookings/Create
+        // POST: Bookings/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("BookingId,CustomerName,EventId,VenueId,BookingDate,StartTime,EndTime")] Booking booking)
@@ -71,9 +97,8 @@ namespace EventBookingSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Re-populate ViewBag in case of validation failure
             ViewBag.Venues = _context.Venues.ToList();
-            ViewBag.Events = _context.Events.ToList();
+            ViewBag.Events = _context.Events.Include(e => e.EventTypes).ToList();
             return View(booking);
         }
 

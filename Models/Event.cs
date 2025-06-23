@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Http;
 
+
 namespace EventEase.Models
 {
     public class Event
@@ -40,5 +41,13 @@ namespace EventEase.Models
         public IFormFile? ImageFile { get; set; }
 
         public ICollection<Booking>? Bookings { get; set; }
+
+        // ✅ NEW: Foreign Key to EventTypes
+        [Required(ErrorMessage = "Event type selection is required")]
+        [Display(Name = "Event Type")]
+        public int EventTypesId { get; set; }
+
+        [ForeignKey("EventTypesId")]
+        public EventTypes? EventTypes { get; set; }
     }
 }

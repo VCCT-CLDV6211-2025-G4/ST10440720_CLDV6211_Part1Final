@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 
+
 namespace EventEase.Data
 {
     public class ApplicationDbContext : DbContext
@@ -16,11 +17,14 @@ namespace EventEase.Data
         public DbSet<Event> Events { get; set; }
         public DbSet<Booking> Bookings { get; set; }
 
+        // Add EventTypes DbSet for EventType lookup table
+        public DbSet<EventTypes> EventTypes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure relationships and constraints
+            // Configure relationships and constraints for Booking
             modelBuilder.Entity<Booking>()
                 .HasOne(b => b.Venue)
                 .WithMany(v => v.Bookings)
@@ -31,12 +35,19 @@ namespace EventEase.Data
                 .HasOne(b => b.Event)
                 .WithMany(e => e.Bookings)
                 .HasForeignKey(b => b.EventId)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Add unique constraint for booking reference
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.BookingReference)
                 .IsUnique();
+
+            // Configure relationship between Event and EventTypes
+            modelBuilder.Entity<Event>()
+                .HasOne(e => e.EventTypes)
+                .WithMany()
+                .HasForeignKey(e => e.EventTypesId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

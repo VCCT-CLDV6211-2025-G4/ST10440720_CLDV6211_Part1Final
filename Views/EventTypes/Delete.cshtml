@@ -1,0 +1,16 @@
+﻿@model EventEase.Models.EventTypes
+
+<h2>Delete Event Type</h2>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>@Model.Name</h4>
+</div>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="EventTypesId" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</form>
+
+

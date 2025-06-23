@@ -3,7 +3,11 @@
 
 @{
     ViewData["Title"] = "Bookings";
-    var query = Context.Request.Query["searchString"].ToString(); 
+    var query = Context.Request.Query["searchString"].ToString();
+    var selectedEventType = Context.Request.Query["eventTypesId"].ToString();
+    var startDate = Context.Request.Query["startDate"].ToString();
+    var endDate = Context.Request.Query["endDate"].ToString();
+    var availableOnly = Context.Request.Query["availableOnly"].ToString();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,11 +17,34 @@
     </a>
 </div>
 
-<!--  Search Form -->
-<form asp-action="Index" method="get" class="mb-3">
-    <div class="input-group">
+<!--  Advanced Search Form -->
+<form asp-action="Index" method="get" class="row row-cols-lg-auto g-3 align-items-center mb-4">
+    <div class="col-12">
         <input type="text" name="searchString" class="form-control" placeholder="Search by Customer or Venue" value="@query" />
-        <button type="submit" class="btn btn-outline-secondary">Search</button>
+    </div>
+    <div class="col-12">
+        <select name="eventTypesId" class="form-select">
+            <option value="">All Event Types</option>
+            @foreach (var eventType in (SelectList)ViewBag.EventTypes)
+            {
+                <option value="@eventType.Value" selected="@(selectedEventType == eventType.Value ? "selected" : null)">
+                    @eventType.Text
+                </option>
+            }
+        </select>
+    </div>
+    <div class="col-12">
+        <input type="date" name="startDate" class="form-control" value="@startDate" />
+    </div>
+    <div class="col-12">
+        <input type="date" name="endDate" class="form-control" value="@endDate" />
+    </div>
+    <div class="col-12 form-check">
+        <input type="checkbox" name="availableOnly" class="form-check-input" value="true" @(availableOnly == "true" ? "checked" : "") />
+        <label class="form-check-label">Available Venues Only</label>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-outline-secondary">Filter</button>
     </div>
 </form>
 
@@ -31,6 +58,7 @@
                         <tr>
                             <th>Customer</th>
                             <th>Event</th>
+                            <th>Type</th>
                             <th>Venue</th>
                             <th>Date</th>
                             <th>Time</th>
@@ -42,13 +70,14 @@
                         @foreach (var item in Model)
                         {
                             <tr>
-                                <td>@item.CustomerName</td> 
+                                <td>@item.CustomerName</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <img src="@item.Event?.ImageUrl" class="rounded-circle me-2" width="40" height="40" alt="@item.Event?.Name">
+                                        <img src="@item.Event?.ImageUrl" class="rounded-circle me-2" width="40" height="40" alt="@item.Event?.Name" />
                                         @item.Event?.Name
                                     </div>
                                 </td>
+                                <td>@item.Event?.EventTypes?.Name</td>
                                 <td>@item.Venue?.Name</td>
                                 <td>@item.StartTime.ToString("MMM dd, yyyy")</td>
                                 <td>@item.StartTime.ToString("h:mm tt") - @item.EndTime.ToString("h:mm tt")</td>

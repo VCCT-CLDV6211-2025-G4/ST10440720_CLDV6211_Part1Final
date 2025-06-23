@@ -29,7 +29,12 @@ namespace EventEase.Models
 
         public ICollection<Booking>? Bookings { get; set; }
 
-        public bool IsAvailable(DateTime date)
+        // Availability flag added for filtering
+        [Display(Name = "Available")]
+        public bool IsAvailable { get; set; } = true;
+
+        // Existing helper method
+        public bool IsAvailableOnDate(DateTime date)
         {
             return Bookings == null || !Bookings.Any(b => b.BookingDate.Date == date.Date);
         }

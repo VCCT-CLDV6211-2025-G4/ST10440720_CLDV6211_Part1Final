@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using EventEase.Models;
 using EventEase.Data;
 using Azure.Storage.Blobs;
-using Microsoft.Extensions.Configuration;
 using System;
+using Microsoft.Extensions.Configuration;
 using Azure.Storage.Blobs.Models;
 
 namespace EventEase.Controllers
@@ -24,7 +24,10 @@ namespace EventEase.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var events = await _context.Events.Include(e => e.Venue).ToListAsync();
+            var events = await _context.Events
+                .Include(e => e.Venue)
+                .Include(e => e.EventTypes)
+                .ToListAsync();
             return View(events);
         }
 
@@ -35,6 +38,7 @@ namespace EventEase.Controllers
 
             var @event = await _context.Events
                 .Include(e => e.Venue)
+                .Include(e => e.EventTypes)
                 .FirstOrDefaultAsync(m => m.EventId == id);
 
             if (@event == null)
@@ -46,12 +50,13 @@ namespace EventEase.Controllers
         public IActionResult Create()
         {
             PopulateVenuesDropDown();
+            PopulateEventTypesDropDown();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EventId,Name,Title,Date,VenueId,Description")] Event @event, IFormFile imageFile)
+        public async Task<IActionResult> Create([Bind("EventId,Name,Title,Date,VenueId,Description,EventTypesId")] Event @event, IFormFile imageFile)
         {
             ValidateImageFile(imageFile);
 
@@ -75,6 +80,7 @@ namespace EventEase.Controllers
             }
 
             PopulateVenuesDropDown(@event.VenueId);
+            PopulateEventTypesDropDown(@event.EventTypesId);
             return View(@event);
         }
 
@@ -88,12 +94,13 @@ namespace EventEase.Controllers
                 return NotFound();
 
             PopulateVenuesDropDown(@event.VenueId);
+            PopulateEventTypesDropDown(@event.EventTypesId);
             return View(@event);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("EventId,Name,Title,Date,VenueId,Description,ImageUrl")] Event @event, IFormFile? imageFile)
+        public async Task<IActionResult> Edit(int id, [Bind("EventId,Name,Title,Date,VenueId,Description,ImageUrl,EventTypesId")] Event @event, IFormFile? imageFile)
         {
             if (id != @event.EventId)
                 return NotFound();
@@ -126,6 +133,7 @@ namespace EventEase.Controllers
             }
 
             PopulateVenuesDropDown(@event.VenueId);
+            PopulateEventTypesDropDown(@event.EventTypesId);
             return View(@event);
         }
 
@@ -136,6 +144,7 @@ namespace EventEase.Controllers
 
             var @event = await _context.Events
                 .Include(e => e.Venue)
+                .Include(e => e.EventTypes)
                 .Include(e => e.Bookings)
                 .FirstOrDefaultAsync(m => m.EventId == id);
 
@@ -161,7 +170,6 @@ namespace EventEase.Controllers
 
             try
             {
-                // Delete associated bookings first if they exist
                 if (@event.Bookings?.Any() == true)
                 {
                     _context.Bookings.RemoveRange(@event.Bookings);
@@ -175,7 +183,6 @@ namespace EventEase.Controllers
             {
                 ModelState.AddModelError("", $"An error occurred: {ex.Message}");
 
-                // Re-populate view data if deletion fails
                 ViewBag.HasBookings = @event.Bookings?.Any() ?? false;
                 ViewBag.BookingCount = @event.Bookings?.Count ?? 0;
 
@@ -191,6 +198,11 @@ namespace EventEase.Controllers
         private void PopulateVenuesDropDown(object? selectedVenueId = null)
         {
             ViewBag.VenueId = new SelectList(_context.Venues.OrderBy(v => v.Name), "VenueId", "Name", selectedVenueId);
+        }
+
+        private void PopulateEventTypesDropDown(object? selectedEventTypesId = null)
+        {
+            ViewBag.EventTypesId = new SelectList(_context.EventTypes.OrderBy(et => et.Name), "EventTypesId", "Name", selectedEventTypesId);
         }
 
         private void ValidateImageFile(IFormFile file, bool isRequired = false)
